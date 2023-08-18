@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>GAIA DR3 Reader</title>
+
+    <link rel="stylesheet" href="node_modules/semantic-ui-css/semantic.min.css" />
+    <link rel="stylesheet" href="node_modules/semantic-ui-forest-themes/semantic.simplex.min.css" />
+    <link rel="stylesheet" href="ui/css/app.css" />
+
+    <script type="application/javascript">
+      // Disable annoying messages about downloading react dev tools.
+      __REACT_DEVTOOLS_GLOBAL_HOOK__ = {
+        supportsFiber: true,
+        inject: function() {},
+        onCommitFiberRoot: function() {},
+        onCommitFiberUnmount: function() {},
+      };
+    </script>
+
+    <script type="text/javascript">
+      window.debug = {};
+      // nw.Window.get().showDevTools();
+    </script>
+
+    <script type="text/javascript" src="build/bundle.js"></script>
+
+</head>
+
+<body style="background-color: #fefcfb">
+    <div id="reactRoot"></div>
+</body>
+</html>

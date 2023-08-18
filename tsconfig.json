@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "es2019",
+    "noImplicitAny": false,
+    "moduleResolution": "node",
+    "outDir": "lib",
+    "esModuleInterop": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowJs": false,
+    "checkJs": false,
+    "inlineSourceMap": true,
+    "incremental": true,
+    "jsx": "react"
+  },
+  "rules": {
+    "semicolon": [ true, "always" ]
+  },
+  "include": ["app/**/*"],
+  "files": [
+    "typings/index.d.ts",
+    "node_modules/@types/nw.gui/index.d.ts"
+  ]
+}

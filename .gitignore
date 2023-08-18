@@ -1,0 +1,4 @@
+/.idea
+/build/bundle.js
+/node_modules
+/pnpm-lock.yaml
