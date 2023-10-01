@@ -353,7 +353,7 @@ Structure: column_name [type|unit_if_any] - description, ucd.
 * `vbroad_nb_transits` `[int16]` - Number of transits used to compute vbroad
     * `ucd: meta.number`
 
-* `grvs_mag` `[float32|mag]` - Integrated Grvs magnitude
+* `grvs_mag` `[float32|mag]` - Integrated Grvs magnitude <sup>[1](https://www.cosmos.esa.int/web/gaia/dr3-how-bright-are-the-stars)</sup> <sup>[2](https://gsaweb.ast.cam.ac.uk/alerts/rvs_data_reduction/)</sup> <sup>[3](https://gsaweb.ast.cam.ac.uk/alerts/rvs_data_reduction/)</sup>
     * `ucd: phot.mag;em.opt`
 
 * `grvs_mag_error` `[float32|mag]` - Grvs magnitude uncertainty
