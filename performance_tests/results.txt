@@ -1,0 +1,17 @@
+This dir contains extremely basic tests to compare performance differences
+between JavaScript and low-level languages meant to be far faster.
+
+Note that this is not at all a fair comparison because all C/C++/Rust code was
+AI generated and will likely not be optimal. Only the JavaScript is
+human-written. The purpose here was simply to see if the low-level languages
+would win despite poor optimization.
+
+The below results are sorted from best total time to worst total time.
+
+Runtime    | Total time | Deflation      | Sorting bytes into lines
+-----------+------------+----------------+-------------------------
+Bun (JS)   | 10.529s    |  5.170 seconds |  5.359 seconds
+C          | 10.826s    |  2.203 seconds |  8.623 seconds
+C++        | 12.979s    |  2.576 seconds | 10.403 seconds
+NW.js (JS) | 25.748s    |  5.784 seconds | 19.964 seconds
+Rust       | 34.647s    | 22.777 seconds | 11.870 seconds
