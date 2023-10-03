@@ -1,6 +1,9 @@
 import fs from 'fs';
+import fsPromises from 'fs/promises';
 import zlib from 'zlib';
-import { bufferToLineStrings } from './bufferToLineStrings';
+import util from 'util';
+
+const gunzipPromise = util.promisify(zlib.gunzip);
 
 function readZippedFile(filePath: string, callback: Function) {
   fs.readFile(filePath, (error, data) => {
@@ -34,7 +37,22 @@ function readZippedFileSync(filePath: string) {
   // return result;
 }
 
+async function readZippedFilePromise(filePath: string) {
+  const data = await fsPromises.readFile(filePath);
+  // console.log('starting deflate...');
+  let start = performance.now();
+  return await gunzipPromise(data);
+  // // console.log('deflate buffer:', result);
+  // console.log('deflation time:', performance.now() - start);
+  //
+  // start = performance.now();
+  // bufferToLineStrings(result);
+  // console.log('Time taken:', performance.now() - start);
+  // return result;
+}
+
 export {
   readZippedFile,
   readZippedFileSync,
+  readZippedFilePromise,
 }
