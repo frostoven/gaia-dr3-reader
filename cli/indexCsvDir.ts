@@ -199,6 +199,18 @@ function onFindLine(line: number[], lineOffset: number, columnOffsets: number[])
 }
 
 const fileList = fs.readdirSync(gaiaDir);
+// Get the file list.
+const fileList = fs.readdirSync(gaiaDir).sort((a, b) => {
+  // Sort the file list alphabetically, assuming no special characters.
+  if (a < b) {
+    return -1;
+  }
+  else if (a > b) {
+    return 1;
+  }
+  return 0;
+});
+
 for (let len = fileList.length; fileNumber < len; fileNumber++) {
   // Create an index entry for this file.
   indexTable.push([]);
