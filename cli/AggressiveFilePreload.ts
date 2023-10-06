@@ -23,9 +23,10 @@ class AggressiveFilePreload {
   }[] = [];
   private _filesLoaded: (Buffer | null)[] = [];
 
-  constructor(gaiaDir: string, fileList: string[]) {
+  constructor(gaiaDir: string, fileList: string[], startIndex = 0) {
     this._gaiaDir = gaiaDir;
     this._fileList = fileList;
+    this._fileIndex = startIndex - 1;
     this.triggerFileLoad().catch(console.error);
   }
 
@@ -50,9 +51,15 @@ class AggressiveFilePreload {
   // been loaded into RAM, checks if something is waiting for it, and feeds the
   // waiting function the file.
   async triggerFileLoad() {
+    if (this._preloadInProgress) {
+      return;
+    }
+    this._preloadInProgress = true;
+
     const index = ++this._fileIndex;
     if (index >= this._fileList.length) {
       console.log('* No more files left to preload.');
+      // console.log({ index, fileCount: this._fileList.length, fileList: this._fileList });
       return;
     }
 
@@ -61,32 +68,33 @@ class AggressiveFilePreload {
       return;
     }
 
-    if (this._preloadInProgress) {
-      return;
-    }
-    this._preloadInProgress = true;
-
     const fileName = this._gaiaDir + '/' + this._fileList[index];
     let buffer: Buffer | null;
 
     const extPart = fileName.slice(-4);
 
-    const stat = await fs.stat(fileName);
-    if (stat.isDirectory()) {
-      console.log('* Skipping', fileName, '- target is a directory.');
-      buffer = null;
+    try {
+      const stat = await fs.stat(fileName);
+      if (stat.isDirectory()) {
+        console.log('* Skipping', fileName, '- target is a directory.');
+        buffer = null;
+      }
+      else if (extPart === '.csv') {
+        console.log(`* Preloading ${fileName}.`);
+        buffer = await fs.readFile(fileName);
+      }
+      else if (extPart === 'v.gz') {
+        console.log(`* Preloading ${fileName}.`);
+        buffer = await readZippedFilePromise(fileName);
+      }
+      else {
+        console.log('* Skipping', fileName, '- extension not recognized.');
+        buffer = null;
+      }
     }
-    else if (extPart === '.csv') {
-      console.log(`* Preloading ${fileName}.`);
-      buffer = await fs.readFile(fileName);
-    }
-    else if (extPart === 'v.gz') {
-      console.log(`* Preloading ${fileName}.`);
-      buffer = await readZippedFilePromise(fileName);
-    }
-    else {
-      console.log('* Skipping', fileName, '- extension not recognized.');
-      buffer = null;
+    catch (error) {
+      // @ts-ignore
+      console.error(`Error loading ${fileName}:`, error.toString());
     }
 
     const request = this._requests.shift();
