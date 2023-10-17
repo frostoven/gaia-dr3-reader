@@ -18,7 +18,7 @@ if (fs.existsSync('./cache/manifest.json')) {
     'Manifest exists in the cache directory. Please delete it if you want ' +
     'rerun this script.',
   );
-  process.exit(0);
+  process.exit(1);
 }
 
 function checkCatalog(fileName: string) {
@@ -97,17 +97,17 @@ const blackbody = JSON.parse(fs.readFileSync('./cache/blackbody.json'));
 //  * index as string map: own file, js object.
 //  * index file position only: no own file, iterative only.
 //
-// Stars with Gvrs magnitude less than 7 (Earth-visible).
-let gUnder7set: any = [
-  // The first 9110 entries come from the BSC. Everything after tha comes from
-  // the GAIA DR3 dataset.
-  ...bscEntries,
-];
+// // Stars with Gvrs magnitude less than 7 (Earth-visible).
+// let gUnder7set: any = [
+//   // The first 9110 entries come from the BSC. Everything after tha comes from
+//   // the GAIA DR3 dataset.
+//   ...bscEntries,
+// ];
 //
-// Stars under 3000 parsecs from Earth (9800 LY), visible or not. Note that
-// this includes the bright star catalog, even stars that are further than 3000
+// Stars under 1000 parsecs from Earth (326 LY), visible or not. Note that this
+// includes the bright star catalog, even stars that are further than 326
 // parsecs away.
-let distanceUnder3000set: any = [
+let distanceUnder360set: any = [
   // The first 9110 entries come from the BSC. Everything after tha comes from
   // the GAIA DR3 dataset.
   ...bscEntries,
@@ -246,48 +246,66 @@ function onFindLine(line: number[], lineOffset: number, columnOffsets: number[])
     const MAG_POS = columnsToIndexPositions[4];
     let mag: any = Buffer.from(line.slice(columnOffsets[MAG_POS], columnOffsets[MAG_POS + 1] - 1)).toString();
 
+    const PAR_POS = columnsToIndexPositions[3];
+    const par = Number(Buffer.from(line.slice(columnOffsets[PAR_POS], columnOffsets[PAR_POS + 1] - 1)).toString()) / 1000;
+    const parsecs = 1 / par;
+    if (parsecs < 1.3) {
+      // There are some values not only "closer" than Proxima Centauri, but
+      // even some stars with negative distances. This is a known problem in
+      // the Gaia DR3 database.
+      return;
+    }
+
     if (mag !== 'null') {
+      const NAME_POS = columnsToIndexPositions[0];
       const RA_POS = columnsToIndexPositions[1];
       const DEC_POS = columnsToIndexPositions[2];
-      const PAR_POS = columnsToIndexPositions[3];
 
-      const name = Buffer.from(line.slice(nameOffsetStart, nameOffsetEnd)).toString();
+      // Note: we offset the name by 10 to cut off the "Gaia DR3 " part to save
+      // space. This saves 11MB over 1 million entries.
+      const name = Number(Buffer.from(line.slice(columnOffsets[NAME_POS] + 10, columnOffsets[NAME_POS + 1] - 2)).toString());
+      if (!name) {
+        console.error('Found bad name. Dump:', { name }, line);
+        return process.exit(1);
+      }
       const ra = Number(Buffer.from(line.slice(columnOffsets[RA_POS], columnOffsets[RA_POS + 1] - 1)).toString());
       const dec = Number(Buffer.from(line.slice(columnOffsets[DEC_POS], columnOffsets[DEC_POS + 1] - 1)).toString());
-      const par = Number(Buffer.from(line.slice(columnOffsets[PAR_POS], columnOffsets[PAR_POS + 1] - 1)).toString());
       mag = Number(mag);
 
-      const parsecs = 1 / par;
-      if (mag < 7) {
+      // if (mag < 7) {
+      //   const absMag = calculateAbsoluteMagnitude(mag, parsecs);
+      //   const naiveLum = calculateLuminosity(absMag);
+      //   const kelvin = round(lumToEffectiveTemperature(naiveLum));
+      //   const color = blackbody[max(kelvin <= 100000 ? kelvin : 100000, 50)];
+      //   gUnder7set.push({
+      //     i: gUnder7set.length,
+      //     n: name,
+      //     r: ra,
+      //     d: dec,
+      //     p: parsecs,
+      //     N: naiveLum,
+      //     K: { r: color.r, g: color.g, b: color.b },
+      //     // G: mag,
+      //   });
+      // }
+      if (parsecs < 360) {
+        // console.log(`[${name}] parallax: ${par}; 1/parallax = ${parsecs} parsecs.`);
+        // console.log(`[${name}] Parsec check: parallax=${par}; parsecs=${parsecs}; ${parsecs} < 1.3? ${parsecs < 1.3020}`);
+        // TODO: replace this with the alkalurops lib and test. It came into
+        //  existence only after we stopped needing this file.
         const absMag = calculateAbsoluteMagnitude(mag, parsecs);
         const naiveLum = calculateLuminosity(absMag);
         const kelvin = round(lumToEffectiveTemperature(naiveLum));
         const color = blackbody[max(kelvin <= 100000 ? kelvin : 100000, 50)];
-        gUnder7set.push({
-          i: gUnder7set.length,
+        distanceUnder360set.push({
+          i: distanceUnder360set.length,
           n: name,
           r: ra,
           d: dec,
-          p: 1 / parsecs,
+          p: parsecs,
           N: naiveLum,
           K: { r: color.r, g: color.g, b: color.b },
-          G: mag,
-        });
-      }
-      if (parsecs < 3000) {
-        const absMag = calculateAbsoluteMagnitude(mag, parsecs);
-        const naiveLum = calculateLuminosity(absMag);
-        const kelvin = round(lumToEffectiveTemperature(naiveLum));
-        const color = blackbody[max(kelvin <= 100000 ? kelvin : 100000, 50)];
-        distanceUnder3000set.push({
-          i: distanceUnder3000set.length,
-          n: name,
-          r: ra,
-          d: dec,
-          p: 1 / parsecs,
-          N: naiveLum,
-          K: { r: color.r, g: color.g, b: color.b },
-          G: mag,
+          // G: mag,
         });
       }
 
@@ -298,7 +316,7 @@ function onFindLine(line: number[], lineOffset: number, columnOffsets: number[])
       // global.xxx++;
       // if (global.xxx > 15000) {
       //   // console.log('gUnder7set size:', gUnder7set.length);
-      //   // console.log('distanceUnder3000set size:', distanceUnder3000set.length);
+      //   // console.log('distanceUnder360set size:', distanceUnder360set.length);
       //   process.exit();
       // }
     }
@@ -335,20 +353,23 @@ const fileList = fs.readdirSync(gaiaDir).sort((a, b) => {
 //   // @ts-ignore
 //   gUnder7set = JSON.parse(fs.readFileSync('/tmp/dr3_gUnder7set.part.json'));
 //   // @ts-ignore
-//   distanceUnder3000set = JSON.parse(fs.readFileSync('/tmp/dr3_distanceUnder3000set.part.json'));
+//   distanceUnder360set = JSON.parse(fs.readFileSync('/tmp/dr3_distanceUnder360set.part.json'));
 // }
 
+let startTime = Date.now();
 if (fs.existsSync('/tmp/dr3_position.json')) {
   console.log('-> Found /tmp/dr3_position.json, resuming processing.');
   const scriptCheckpoint = fs.readFileSync('/tmp/dr3_position.json');
   // @ts-ignore
-  fileNumber = JSON.parse(scriptCheckpoint).fileNumber;
+  const data = JSON.parse(scriptCheckpoint);
+  fileNumber = data.fileNumber;
+  startTime = data.startTime;
   console.log('Resuming at file number', fileNumber);
 
   // @ts-ignore
-  gUnder7set = JSON.parse(fs.readFileSync('/tmp/dr3_gUnder7set.part.json'));
+  // gUnder7set = JSON.parse(fs.readFileSync('/tmp/dr3_gUnder7set.part.json'));
   // @ts-ignore
-  distanceUnder3000set = JSON.parse(fs.readFileSync('/tmp/dr3_distanceUnder3000set.part.json'));
+  distanceUnder360set = JSON.parse(fs.readFileSync('/tmp/dr3_distanceUnder360set.part.json'));
 }
 
 const preloader = new AggressiveFilePreload(gaiaDir, fileList, fileNumber);
@@ -373,8 +394,9 @@ for (let len = fileList.length; fileNumber < len; fileNumber++) {
   processed++;
   const loadedAfter = Date.now() - start;
   console.log(' * Process time:', loadedAfter);
-  console.log(`   gUnder7set length is ${gUnder7set.length}`);
-  console.log(`   distanceUnder3000set length is ${distanceUnder3000set.length}`);
+  // console.log(`   gUnder7set length is ${gUnder7set.length}`);
+  console.log(`   distanceUnder360set length is ${distanceUnder360set.length}`);
+  console.log(`   distanceUnder360set excluding the BSC: ${distanceUnder360set.length - bscEntries.length}`);
 
   // Write the data being worked on and wait; it's critical for resuming on
   // crash, which Bun does often.
@@ -385,12 +407,21 @@ for (let len = fileList.length; fileNumber < len; fileNumber++) {
   //   timestamp: new Date().toLocaleString(),
   // }));
 
+  const duration = Date.now() - startTime;
+  const progress = (fileNumber + 1) / fileList.length;
+  const totalEstimated = (((duration / progress) / 1000) / 3600).toFixed(2);
+  const remainingEstimate = ((((duration / progress) - duration) / 1000) / 3600).toFixed(2);
+  console.log(`\x1b[1;32m> ETA: ${remainingEstimate} of ${totalEstimated} hours remaining.\x1b[0m`);
+
   // Bun crashes due to memory issues around 48 files in, depending on size.
   // Do a controlled exit rather than dealing with a spontaneous crash.
   if (processed > 29) {
-    await fsAwait.writeFile('/tmp/dr3_gUnder7set.part.json', JSON.stringify(gUnder7set, null, 2));
-    await fsAwait.writeFile('/tmp/dr3_distanceUnder3000set.part.json', JSON.stringify(distanceUnder3000set, null, 2));
-    await fsAwait.writeFile('/tmp/dr3_position.json', JSON.stringify({ fileNumber: fileNumber + 1 }, null, 2));
+    // await fsAwait.writeFile('/tmp/dr3_gUnder7set.part.json', JSON.stringify(gUnder7set));
+    await fsAwait.writeFile('/tmp/dr3_distanceUnder360set.part.json', JSON.stringify(distanceUnder360set));
+    await fsAwait.writeFile('/tmp/dr3_position.json', JSON.stringify({
+      fileNumber: fileNumber + 1,
+      startTime,
+    }, null, 2));
     console.log(
       'Intentionally doing clean controlled exist to prevent Bun crash. ' +
       'Please run this script in a loop.\n',
@@ -411,12 +442,12 @@ fs.writeFileSync('./cache/manifest.json', JSON.stringify({
 }, null, 2));
 
 await Bun.write(Bun.stdout, '\n');
-console.log('Writing distanceUnder3000set.json.');
-fs.writeFileSync('./cache/distanceUnder3000set.json', JSON.stringify(distanceUnder3000set, null, 2));
+console.log('Writing distanceUnder360set.json.');
+fs.writeFileSync('./cache/distanceUnder360set.json', JSON.stringify(distanceUnder360set/*, null, 2*/));
 
-await Bun.write(Bun.stdout, '\n');
-console.log('Writing gUnder7set.json.');
-fs.writeFileSync('./cache/gUnder7set.json', JSON.stringify(gUnder7set, null, 2));
+// await Bun.write(Bun.stdout, '\n');
+// console.log('Writing gUnder7set.json.');
+// fs.writeFileSync('./cache/gUnder7set.json', JSON.stringify(gUnder7set, null, 2));
 
 // await Bun.write(Bun.stdout, '\n');
 // console.log('Writing index file.');
